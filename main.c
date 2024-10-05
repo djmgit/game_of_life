@@ -4,6 +4,7 @@
 
 #define WORLD_WIDTH 64
 #define WORLD_HEIGHT 32
+#define NUM_NEIGHBOURS 8
 #define SCALE 16
 #define FPS 4
 
@@ -58,58 +59,66 @@ void copyWorldFromMatrix(int **world, int worldMatrix[32][64]) {
     }
 }
 
+int* getNeighbours(int **world, int x, int y, int *neighbours) {
+    int currNeighbour = 0;
+    int xplus1 = (x + 1) % WORLD_WIDTH;
+    int xminus1 = x - 1;
+    if (xminus1 < 0) {
+        xminus1 += WORLD_WIDTH;
+    }
+    int yplus1 = (y + 1) % WORLD_HEIGHT;
+    int yminus1 = y - 1;
+    if (yminus1 < 0) {
+        yminus1 += WORLD_HEIGHT;
+    }
+    neighbours[currNeighbour++] = world[y][xminus1];
+    neighbours[currNeighbour++] = world[y][xplus1];
+    neighbours[currNeighbour++] = world[yminus1][x];
+    neighbours[currNeighbour++] = world[yplus1][x];
+    neighbours[currNeighbour++] = world[yminus1][xminus1];
+    neighbours[currNeighbour++] = world[yminus1][xplus1];
+    neighbours[currNeighbour++] = world[yplus1][xminus1];
+    neighbours[currNeighbour++] = world[yplus1][xplus1];
+}
+
+int generateCellValue(int **world, int x, int y) {
+    int *neighbours = (int *)malloc(sizeof(int) * NUM_NEIGHBOURS);
+    getNeighbours(world, x, y, neighbours);
+    int liveNeighbours = 0;
+    int deadNeighbours = 0;
+
+    for (int i = 0; i < 8; i++) {
+        if (neighbours[i] == 1) {
+            liveNeighbours++;
+        } else {
+            deadNeighbours++;
+        }
+    }
+    int cellValue = 0;
+
+    if (world[y][x] == 1) {
+        if (liveNeighbours < 2 || liveNeighbours > 3) {
+            cellValue = 0;
+        } else {
+            cellValue = 1;
+        }
+    } else {
+        if (liveNeighbours == 3) {
+            cellValue = 1;
+        } else {
+            cellValue = 0;
+        }
+    }
+
+    return cellValue;
+}
+
 int generateWorldFromCurrent(int **world) {
     int **newWorld = initWorld();
 
     for (int y = 0; y < WORLD_HEIGHT; y++) {
         for (int x = 0; x < WORLD_WIDTH; x++) {
-            int neighbours[8] = {0};
-            int currNeighbour = 0;
-            int xplus1 = (x + 1) % WORLD_WIDTH;
-            int xminus1 = x - 1;
-            if (xminus1 < 0) {
-                xminus1 += WORLD_WIDTH;
-            }
-            int yplus1 = (y + 1) % WORLD_HEIGHT;
-            int yminus1 = y - 1;
-            if (yminus1 < 0) {
-                yminus1 += WORLD_HEIGHT;
-            }
-            neighbours[currNeighbour++] = world[y][xminus1];
-            neighbours[currNeighbour++] = world[y][xplus1];
-            neighbours[currNeighbour++] = world[yminus1][x];
-            neighbours[currNeighbour++] = world[yplus1][x];
-            neighbours[currNeighbour++] = world[yminus1][xminus1];
-            neighbours[currNeighbour++] = world[yminus1][xplus1];
-            neighbours[currNeighbour++] = world[yplus1][xminus1];
-            neighbours[currNeighbour++] = world[yplus1][xplus1];
-
-
-
-            int liveNeighbours = 0;
-            int deadNeighbours = 0;
-
-            for (int i = 0; i < 8; i++) {
-                if (neighbours[i] == 1) {
-                    liveNeighbours++;
-                } else {
-                    deadNeighbours++;
-                }
-            }
-
-            if (world[y][x] == 1) {
-                if (liveNeighbours < 2 || liveNeighbours > 3) {
-                    newWorld[y][x] = 0;
-                } else {
-                    newWorld[y][x] = 1;
-                }
-            } else {
-                if (liveNeighbours == 3) {
-                    newWorld[y][x] = 1;
-                } else {
-                    newWorld[y][x] = 0;
-                }
-            }
+            newWorld[y][x] = generateCellValue(world, x, y);
         }
     }
 
@@ -161,9 +170,7 @@ int main()
         BeginDrawing();
             ClearBackground(RAYWHITE);
             render(screenWidth, screenHeight, world);
-            
         EndDrawing();
-
         generateWorldFromCurrent(world);
     }
 
